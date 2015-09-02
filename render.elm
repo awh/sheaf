@@ -1,6 +1,7 @@
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import List exposing(map)
+import Mouse
 
 type Node = TextNode Int Int String
 type Edge = Link Node Node
@@ -37,15 +38,26 @@ transform : Model -> Html
 transform model = 
   div [] (map (renderNode model) model.nodes)
 
+update : (Int, Int) -> Model -> Model
+update (x, y) old =
+  let
+    node = TextNode x y "Wheee!"
+  in {
+    nodes = [ node ],
+    edges = [ ],
+    contentEditable = Nothing,
+    selected = Nothing }
+
 --
 
 fooNode = TextNode 100 100 "Foo"
 barNode = TextNode 200 100 "Bar"
 
-model = {
+initialModel = {
   nodes = [ fooNode, barNode ],
   edges = [ Link fooNode barNode ],
   contentEditable = Just fooNode,
   selected = Nothing }
   
-main = transform model
+main : Signal Html
+main = Signal.map transform (Signal.foldp update initialModel Mouse.position)
