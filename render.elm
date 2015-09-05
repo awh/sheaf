@@ -43,10 +43,10 @@ update (x, y) old =
   let
     node = TextNode x y "Wheee!"
   in {
-    nodes = [ node ],
-    edges = [ ],
-    contentEditable = Nothing,
-    selected = Nothing }
+    nodes = node :: old.nodes,
+    edges = old.edges,
+    contentEditable = old.contentEditable,
+    selected = old.selected }
 
 --
 
@@ -58,6 +58,9 @@ initialModel = {
   edges = [ Link fooNode barNode ],
   contentEditable = Just fooNode,
   selected = Nothing }
-  
+
+clickPositionSignal : Signal (Int, Int)
+clickPositionSignal = Signal.sampleOn Mouse.clicks Mouse.position
+
 main : Signal Html
-main = Signal.map transform (Signal.foldp update initialModel Mouse.position)
+main = Signal.map transform (Signal.foldp update initialModel clickPositionSignal)
