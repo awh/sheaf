@@ -29,17 +29,28 @@ renderNode : Model -> Node -> Html
 renderNode model node =
   case node of
     TextNode x y s ->
-      textarea [
-        onWithOptions "click" options Json.Decode.value (\_ -> Signal.message mailbox.address Nothing),
-        style [
-          ("position", "absolute"),
-          ("left", (toString x) ++ "px"),
-          ("top", (toString y) ++ "px")
-        ],
-        contenteditable (isEditable model node)
-      ] [
-        text s
-      ]
+      if isEditable model node then
+        textarea [
+          onWithOptions "click" options Json.Decode.value (\_ -> Signal.message mailbox.address Nothing),
+          style [
+            ("position", "absolute"),
+            ("left", (toString x) ++ "px"),
+            ("top", (toString y) ++ "px")
+          ]
+        ] [
+          text s
+        ]
+      else
+        div [
+          onWithOptions "click" options Json.Decode.value (\_ -> Signal.message mailbox.address Nothing),
+          style [
+            ("position", "absolute"),
+            ("left", (toString x) ++ "px"),
+            ("top", (toString y) ++ "px")
+          ]
+        ] [
+          text s
+        ]
 
 transform : Model -> Html
 transform model = 
