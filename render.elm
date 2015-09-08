@@ -1,7 +1,9 @@
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (..)
 import List exposing(map)
 import Mouse
+import Json.Decode
 
 type Node = TextNode Int Int String
 type Edge = Link Node Node
@@ -19,11 +21,16 @@ isEditable model node =
     Nothing -> False
     Just editableNode -> editableNode == node
 
+mailbox = Signal.mailbox Nothing
+
+options = { stopPropagation = True, preventDefault = False }
+
 renderNode : Model -> Node -> Html
 renderNode model node =
   case node of
     TextNode x y s ->
-      div [
+      textarea [
+        onWithOptions "click" options Json.Decode.value (\_ -> Signal.message mailbox.address Nothing),
         style [
           ("position", "absolute"),
           ("left", (toString x) ++ "px"),
