@@ -8,6 +8,8 @@ import Json.Decode
 type Node = TextNode Int Int String
 type Edge = Link Node Node
 
+type Action = CanvasClick Int Int | NodeClick Node
+
 type alias Model = {
   nodes : List Node,
   edges : List Edge,
@@ -21,7 +23,11 @@ isEditable model node =
     Nothing -> False
     Just editableNode -> editableNode == node
 
+mailbox : Signal.Mailbox (Maybe a)
 mailbox = Signal.mailbox Nothing
+
+actionMailbox : Signal.Mailbox (Maybe Action)
+actionMailbox = Signal.mailbox Nothing
 
 options = { stopPropagation = True, preventDefault = False }
 
@@ -42,7 +48,7 @@ renderNode model node =
         ]
       else
         div [
-          onWithOptions "click" options Json.Decode.value (\_ -> Signal.message mailbox.address Nothing),
+          onWithOptions "click" options Json.Decode.value (\_ -> Signal.message actionMailbox.address (Just (NodeClick node))),
           style [
             ("position", "absolute"),
             ("left", (toString x) ++ "px"),
@@ -56,15 +62,22 @@ transform : Model -> Html
 transform model = 
   div [] (map (renderNode model) model.nodes)
 
-update : (Int, Int) -> Model -> Model
-update (x, y) old =
-  let
-    node = TextNode x y "Wheee!"
-  in {
-    nodes = node :: old.nodes,
-    edges = old.edges,
-    contentEditable = old.contentEditable,
-    selected = old.selected }
+update : Maybe Action -> Model -> Model
+update action old =
+  case action of
+    Just (CanvasClick x y) ->
+      let
+        node = TextNode x y "Enter text..."
+      in {
+        nodes = node :: old.nodes,
+        edges = old.edges,
+        contentEditable = Just node,
+        selected = Nothing }
+    Just (NodeClick node) -> {
+      nodes = old.nodes,
+      edges = old.edges,
+      contentEditable = Just node,
+      selected = Nothing }
 
 --
 
@@ -77,8 +90,12 @@ initialModel = {
   contentEditable = Just fooNode,
   selected = Nothing }
 
-clickPositionSignal : Signal (Int, Int)
-clickPositionSignal = Signal.sampleOn Mouse.clicks Mouse.position
+clickPosition2CanvasClick (x, y) = Just (CanvasClick x y)
+
+clickPositionSignal : Signal (Maybe Action)
+clickPositionSignal = Signal.map clickPosition2CanvasClick (Signal.sampleOn Mouse.clicks Mouse.position)
+
+signal = Signal.merge actionMailbox.signal clickPositionSignal
 
 main : Signal Html
-main = Signal.map transform (Signal.foldp update initialModel clickPositionSignal)
+main = Signal.map transform (Signal.foldp update initialModel signal)
