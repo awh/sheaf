@@ -100,31 +100,23 @@ update action old =
   case action of
     Just (CanvasClick x y) ->
       case old.editing of
-        Just (EditNode node s) -> {
-          nodes = replaceNodeText node s old.nodes,
-          edges = old.edges,
-          editing = Nothing
-        }
+        Just (EditNode node s) ->
+          if s == "" then { old | editing <- Nothing }
+          else { old |
+            nodes <- replaceNodeText node s old.nodes,
+            editing <- Nothing
+          }
         Nothing ->
           let
             node = TextNode x y ""
-          in {
-            nodes = node :: old.nodes,
-            edges = old.edges,
-            editing = Just (EditNode node "")
+          in { old|
+            nodes <- node :: old.nodes,
+            editing <- Just (EditNode node "")
           }
     Just (NodeClick node) ->
       case node of
-        TextNode x y s -> {
-          nodes = old.nodes,
-          edges = old.edges,
-          editing = Just (EditNode node s)
-      }
-    Just (UpdateNodeText node text) -> {
-      nodes = old.nodes,
-      edges = old.edges,
-      editing = Just (EditNode node text)
-    }
+        TextNode x y s -> { old | editing <- Just (EditNode node s) }
+    Just (UpdateNodeText node text) -> { old | editing <- Just (EditNode node text) }
 
 -- Main
 
