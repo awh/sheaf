@@ -22,18 +22,24 @@ preventPropagation eventName =
 type Node = TextNode Int Int String
 type Edge = Link Node Node
 
+type EditNode = EditNode Node String
+
 type alias Model = {
   nodes : List Node,
   edges : List Edge,
-  editing : Maybe Node
-}
+  editing : Maybe EditNode
+  }
 
 -- Actions
 
-type Action = CanvasClick Int Int | NodeClick Node
+type Action = CanvasClick Int Int | NodeClick Node | UpdateNodeText Node String
 
 actionMailbox : Signal.Mailbox (Maybe Action)
 actionMailbox = Signal.mailbox Nothing
+
+onInput : Signal.Address (Maybe Action) -> Node -> Attribute
+onInput address node =
+    on "input" targetValue (\str -> Signal.message address (Just (UpdateNodeText node str)))
 
 -- View
 
@@ -41,7 +47,7 @@ isEditable : Model -> Node -> Bool
 isEditable model node =
   case model.editing of
     Nothing -> False
-    Just editableNode -> editableNode == node
+    Just (EditNode editableNode _) -> editableNode == node
 
 options = { stopPropagation = True, preventDefault = False }
 
@@ -61,6 +67,7 @@ renderNode model node =
         textarea [
           placeholder "Enter text...",
           preventPropagation "click",
+          onInput actionMailbox.address node,
           nodeStyle node
         ] [
           text s
@@ -78,29 +85,45 @@ transform model =
   div [] (map (renderNode model) model.nodes)
 
 -- Update
+replaceNodeText : Node -> String -> (List Node) -> (List Node)
+replaceNodeText node text nodes =
+  case node of
+    TextNode x y _ ->
+      let
+        newNode = TextNode x y text
+        filteredNodes = List.filter (\x -> x /= node) nodes
+      in
+        newNode :: filteredNodes
 
 update : Maybe Action -> Model -> Model
 update action old =
   case action of
     Just (CanvasClick x y) ->
       case old.editing of
-        Just _ -> {
-          nodes = old.nodes,
+        Just (EditNode node s) -> {
+          nodes = replaceNodeText node s old.nodes,
           edges = old.edges,
           editing = Nothing
         }
         Nothing ->
           let
-            node = TextNode x y "Some text"
+            node = TextNode x y ""
           in {
             nodes = node :: old.nodes,
             edges = old.edges,
-            editing = Just node
+            editing = Just (EditNode node "")
           }
-    Just (NodeClick node) -> {
+    Just (NodeClick node) ->
+      case node of
+        TextNode x y s -> {
+          nodes = old.nodes,
+          edges = old.edges,
+          editing = Just (EditNode node s)
+      }
+    Just (UpdateNodeText node text) -> {
       nodes = old.nodes,
       edges = old.edges,
-      editing = Just node
+      editing = Just (EditNode node text)
     }
 
 -- Main
